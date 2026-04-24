@@ -1,5 +1,5 @@
 import {
-  Building2, Package, Layers, TrendingUp, FileText,
+  Building2, Package, Layers, FileText,
   ChevronLeft, Ticket, BarChart2, MessageSquare, ExternalLink, Bot, Wrench
 } from 'lucide-react';
 import { SastrIALogo } from '@/components/SastrIALogo';
@@ -26,7 +26,6 @@ const adminItems = [
   { title: 'Leads Calculadora',   url: '/calc-leads',    icon: BarChart2  },
   { title: 'Catálogo SKUs',       url: '/sku-catalog',   icon: Package    },
   { title: 'Catálogo Microsoft',  url: '/ms-catalog',    icon: Layers     },
-  { title: 'Oportunidades',       url: '/opportunities', icon: TrendingUp },
   { title: 'Chat Logs',           url: '/chat-logs',     icon: FileText   },
   { title: 'Config do Agente',    url: '/agent-config',  icon: Bot        },
   { title: 'Tools do Agente',     url: '/agent-tools',   icon: Wrench     },
