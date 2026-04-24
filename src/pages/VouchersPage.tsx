@@ -352,7 +352,7 @@ export default function VouchersPage() {
                   rel="noopener noreferrer"
                   className="text-primary underline font-medium break-all"
                 >
-                  chat.sastria.com.br/wizard?code={newVoucherCode}
+                  chat.sastria.com.br/onboarding?code={newVoucherCode}
                 </a>
               </p>
             </div>
