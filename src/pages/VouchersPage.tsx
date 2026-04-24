@@ -59,7 +59,7 @@ export default function VouchersPage() {
     toast.success(`Código ${code} copiado!`);
   };
 
-  const WIZARD_URL = 'https://chat.sastria.com.br/wizard';
+  const WIZARD_URL = 'https://chat.sastria.com.br/onboarding';
 
   const shareOnWhatsApp = (code: string) => {
     const link = `${WIZARD_URL}?code=${code}`;
