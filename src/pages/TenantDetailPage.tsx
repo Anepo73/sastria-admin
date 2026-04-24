@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchTenants } from '@/lib/api';
+import { fetchTenants, fetchTenantSubscription, fetchSubscriptionPlans, updateTenantSubscription } from '@/lib/api';
 import type { Tenant } from '@/types';
+import type { TenantSubscription, SubscriptionPlan } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 import {
   ArrowLeft, Database, CreditCard, Key, Users, Brain,
-  FileText, TrendingUp, Pencil, Package,
+  FileText, TrendingUp, Pencil, Package, Crown, RefreshCw, Loader2,
 } from 'lucide-react';
 
 import {
@@ -27,7 +30,7 @@ const ACTIONS = [
   { id: 'edit',          label: 'Editar Tenant',    desc: 'Alterar código, status e configurações',      icon: Pencil,       color: 'text-gray-400    bg-gray-500/10    border-gray-500/30' },
 ] as const;
 
-type ModalKey = 'ingest' | 'subscriptions' | 'users' | 'kb' | 'prompt' | 'edit' | null;
+type ModalKey = 'ingest' | 'subscriptions' | 'users' | 'kb' | 'prompt' | 'edit' | 'changePlan' | null;
 
 export default function TenantDetailPage() {
   const { tenantId, tenantCode } = useParams<{ tenantId: string; tenantCode: string }>();
@@ -42,6 +45,13 @@ export default function TenantDetailPage() {
     staleTime: 60_000,
   });
 
+  const { data: subscription, isLoading: subLoading } = useQuery({
+    queryKey: ['tenant-subscription', tenantId],
+    queryFn: () => fetchTenantSubscription(tenantId!),
+    enabled: !!tenantId,
+    staleTime: 30_000,
+  });
+
   const tenant = tenants.find(t => t.tenant_id === tenantId) ?? null;
 
   const handleAction = (id: string) => {
@@ -52,6 +62,10 @@ export default function TenantDetailPage() {
       default:              setActiveModal(id as ModalKey);
     }
   };
+
+  const planBadgeClass = subscription?.PlanCode === 'pro'
+    ? 'bg-violet-500/20 text-violet-300 border-violet-500/30'
+    : 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30';
 
   return (
     <div className="p-6 admin-bg relative admin-grid min-h-full">
@@ -84,6 +98,54 @@ export default function TenantDetailPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Subscription Card */}
+        <div className="glass rounded-xl p-5 border border-border">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Crown className="h-5 w-5 text-amber-400" />
+              <h2 className="font-semibold text-foreground">Assinatura</h2>
+            </div>
+            <Button variant="outline" size="sm" className="gap-1.5"
+              onClick={() => setActiveModal('changePlan')}>
+              <RefreshCw className="h-3.5 w-3.5" /> Alterar Plano
+            </Button>
+          </div>
+          {subLoading ? (
+            <div className="flex items-center gap-2 text-muted-foreground py-2">
+              <Loader2 className="h-4 w-4 animate-spin" /> Carregando...
+            </div>
+          ) : subscription ? (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Plano</p>
+                <Badge variant="outline" className={planBadgeClass}>
+                  {subscription.PlanCode === 'pro' ? '⭐ Professional' : '🆓 Trial'}
+                </Badge>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Modelo</p>
+                <p className="text-sm font-mono text-foreground">{subscription.DefaultChatModel}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Tools</p>
+                <p className="text-sm text-foreground">{subscription.AllowedTools?.length ?? 0} ativos</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Status</p>
+                <Badge variant="outline" className={
+                  subscription.Status === 'active'
+                    ? 'bg-success/20 text-success border-success/30'
+                    : 'bg-destructive/20 text-destructive border-destructive/30'
+                }>
+                  {subscription.Status === 'active' ? '● Ativo' : subscription.Status}
+                </Badge>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Sem assinatura ativa. Fallback: Trial.</p>
+          )}
         </div>
 
         {/* Action grid */}
@@ -120,6 +182,102 @@ export default function TenantDetailPage() {
           {activeModal === 'subscriptions' && <SubscriptionsModal tenant={tenant} onClose={() => setActiveModal(null)} />}
         </>
       )}
+      {activeModal === 'changePlan' && tenantId && (
+        <ChangePlanModal
+          tenantId={tenantId}
+          currentPlan={subscription?.PlanCode ?? null}
+          onClose={() => setActiveModal(null)}
+          onChanged={() => {
+            setActiveModal(null);
+            queryClient.invalidateQueries({ queryKey: ['tenant-subscription', tenantId] });
+            toast.success('Plano alterado com sucesso!');
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+
+// ─── ChangePlanModal ─────────────────────────────────────────────────────────
+
+function ChangePlanModal({ tenantId, currentPlan, onClose, onChanged }: {
+  tenantId: string;
+  currentPlan: string | null;
+  onClose: () => void;
+  onChanged: () => void;
+}) {
+  const [selected, setSelected] = useState(currentPlan ?? 'trial');
+  const [loading, setLoading] = useState(false);
+
+  const { data: plans = [] } = useQuery({
+    queryKey: ['subscription-plans'],
+    queryFn: fetchSubscriptionPlans,
+    staleTime: 60_000,
+  });
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    try {
+      await updateTenantSubscription({
+        tenantId,
+        planCode: selected,
+        action: 'upsert',
+        updatedBy: 'admin-ui',
+      });
+      onChanged();
+    } catch {
+      toast.error('Erro ao alterar plano.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Crown className="h-5 w-5 text-amber-400" /> Alterar Plano
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          {plans.map((p: SubscriptionPlan) => (
+            <button key={p.PlanCode} type="button"
+              onClick={() => setSelected(p.PlanCode)}
+              className={`w-full rounded-xl border p-4 text-left transition-all ${
+                selected === p.PlanCode
+                  ? 'border-primary bg-primary/10 ring-1 ring-primary/40'
+                  : 'border-border hover:border-primary/40 hover:bg-surface-hover'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-semibold text-foreground">
+                  {p.PlanCode === 'pro' ? '⭐' : '🆓'} {p.DisplayName}
+                </span>
+                {p.PlanCode === currentPlan && (
+                  <Badge variant="outline" className="text-xs bg-primary/20 text-primary border-primary/30">
+                    Atual
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">{p.Description}</p>
+              <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
+                <span>Modelo: {p.DefaultChatModel}</span>
+                <span>Tools: {p.AllowedTools?.length ?? 0}</span>
+                <span>Users: {p.MaxUsersPerTenant === 0 ? '∞' : p.MaxUsersPerTenant}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
+          <Button onClick={handleSubmit} disabled={loading || selected === currentPlan} className="gap-1.5">
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Crown className="h-4 w-4" />}
+            Confirmar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

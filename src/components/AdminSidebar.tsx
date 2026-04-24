@@ -1,6 +1,6 @@
 import {
   Building2, Package, Layers, FileText,
-  ChevronLeft, Ticket, BarChart2, MessageSquare, ExternalLink, Bot, Wrench
+  ChevronLeft, Ticket, BarChart2, MessageSquare, ExternalLink, Bot, Wrench, Crown
 } from 'lucide-react';
 import { SastrIALogo } from '@/components/SastrIALogo';
 import { SastrIAAvatar } from '@/components/SastrIAAvatar';
@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button';
 const adminItems = [
   { title: 'Tenants',             url: '/',              icon: Building2  },
   { title: 'Vouchers',            url: '/vouchers',      icon: Ticket     },
+  { title: 'Planos',              url: '/plans',         icon: Crown      },
   { title: 'Leads Calculadora',   url: '/calc-leads',    icon: BarChart2  },
   { title: 'Catálogo SKUs',       url: '/sku-catalog',   icon: Package    },
   { title: 'Catálogo Microsoft',  url: '/ms-catalog',    icon: Layers     },

@@ -19,6 +19,7 @@ import MicrosoftCatalogPage from "@/pages/MicrosoftCatalogPage";
 import AgentConfigPage from "@/pages/AgentConfigPage";
 import AgentToolsPage from "@/pages/AgentToolsPage";
 import TenantDetailPage from "@/pages/TenantDetailPage";
+import PlansPage from "@/pages/PlansPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -73,6 +74,7 @@ const AdminApp = () => (
               <Route path="/tenants/:tenantId/:tenantCode" element={<TenantDetailPage />} />
               <Route path="/admin/skus/:tenantId/:tenantCode" element={<TenantSkusPage />} />
               <Route path="/vouchers" element={<VouchersPage />} />
+              <Route path="/plans" element={<PlansPage />} />
               <Route path="/sku-catalog" element={<SkuCatalogPage />} />
               <Route path="/ms-catalog" element={<MicrosoftCatalogPage />} />
               <Route path="/opportunities" element={<OpportunitiesPage />} />

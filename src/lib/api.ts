@@ -523,6 +523,64 @@ export const getGlobalPrompt = () => cpGet('GetGlobalPrompt');
 export const saveGlobalPrompt = (contentHtml: string, updatedBy: string) =>
   cpPost('SaveGlobalPrompt', { contentHtml, updatedBy } as Record<string, unknown>);
 
+// ── Subscription Plans ────────────────────────────────────────────────────────
+
+export interface SubscriptionPlan {
+  PlanCode: string;
+  DisplayName: string;
+  Description: string;
+  SortOrder: number;
+  IsActive: boolean;
+  MaxUsersPerTenant: number;
+  MaxKbFiles: number;
+  MaxKbSizeMb: number;
+  MaxChatMsgsPerDay: number;
+  AllowCustomPrompt: boolean;
+  AllowModelOverride: boolean;
+  DefaultChatModel: string;
+  DefaultRagModel: string | null;
+  DefaultTemperature: number;
+  DefaultMaxTokens: number;
+  DefaultMaxRounds: number;
+  AllowedTools: string[];
+  PlanPromptHtml: string | null;
+}
+
+export interface TenantSubscription {
+  SubscriptionId: string;
+  TenantId: string;
+  PlanCode: string;
+  Status: string;
+  StartedAt: string;
+  ExpiresAt: string | null;
+  DisplayName: string;
+  PlanDescription: string;
+  AllowedTools: string[];
+  MaxUsersPerTenant: number;
+  MaxKbFiles: number;
+  MaxChatMsgsPerDay: number;
+  AllowCustomPrompt: boolean;
+  DefaultChatModel: string;
+}
+
+export const fetchSubscriptionPlans = async (): Promise<SubscriptionPlan[]> => {
+  const r = await cpGet('GetSubscriptionPlans');
+  return (r?.plans ?? []) as SubscriptionPlan[];
+};
+
+export const fetchTenantSubscription = async (tenantId: string): Promise<TenantSubscription | null> => {
+  const r = await cpGet('GetTenantSubscription', { tenantId });
+  return (r?.subscription ?? null) as TenantSubscription | null;
+};
+
+export const updateTenantSubscription = (data: {
+  tenantId: string;
+  planCode: string;
+  action: 'upsert' | 'cancel' | 'suspend' | 'reactivate';
+  updatedBy?: string;
+  notes?: string;
+}) => cpPost('UpdateTenantSubscription', data as Record<string, unknown>);
+
 
 // ── Wizard: Voucher / Onboarding Code ─────────────────────────────────────────
 
@@ -531,6 +589,7 @@ export interface WizardValidateResult {
   useId?: string;
   voucherId?: string;
   description?: string | null;
+  planCode?: string;
   expiresAt?: string | null;
   usesLeft?: number;
   maxUses?: number;
@@ -573,6 +632,7 @@ export const createVoucher = (data: {
   maxUses?: number;
   expiresAt?: string | null;
   notes?: string | null;
+  planCode?: string;
 }) => swaPost('VouchersAdmin', data as Record<string, unknown>);
 
 export const revokeVoucher = (id: string) =>

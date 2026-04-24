@@ -153,6 +153,7 @@ export default function VouchersPage() {
               <TableRow className="border-border hover:bg-transparent">
                 <TableHead>Código</TableHead>
                 <TableHead>Descrição</TableHead>
+                <TableHead>Plano</TableHead>
                 <TableHead>Criado por</TableHead>
                 <TableHead className="text-center">Usos</TableHead>
                 <TableHead>Validade</TableHead>
@@ -201,6 +202,14 @@ export default function VouchersPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-sm text-foreground max-w-[200px] truncate">{v.Description ?? '—'}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={v.PlanCode === 'pro'
+                        ? 'bg-violet-500/20 text-violet-300 border-violet-500/30'
+                        : 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30'
+                      }>
+                        {v.PlanCode === 'pro' ? '⭐ Professional' : '🆓 Trial'}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{v.CreatedBy ?? '—'}</TableCell>
                     <TableCell className="text-center">
                       <span className="tabular-nums font-semibold">{v.UsesCount ?? 0}</span>
@@ -374,7 +383,7 @@ export default function VouchersPage() {
 // ─── CreateVoucherModal ────────────────────────────────────────────────────────
 
 function CreateVoucherModal({ onClose, onCreated }: { onClose: () => void; onCreated: (code: string) => void }) {
-  const [form, setForm] = useState({ description: '', maxUses: 1, expiresAt: '', notes: '' });
+  const [form, setForm] = useState({ description: '', maxUses: 1, expiresAt: '', notes: '', planCode: 'trial' });
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
@@ -386,6 +395,7 @@ function CreateVoucherModal({ onClose, onCreated }: { onClose: () => void; onCre
         maxUses: Math.max(1, Number(form.maxUses)),
         expiresAt: form.expiresAt || null,
         notes: form.notes || null,
+        planCode: form.planCode,
       }) as any;
       if (res?.code) { onCreated(res.code); onClose(); toast.success(`Voucher ${res.code} criado!`); }
       else { toast.error(res?.erro || 'Erro ao criar voucher.'); }
@@ -424,6 +434,27 @@ function CreateVoucherModal({ onClose, onCreated }: { onClose: () => void; onCre
             <Label htmlFor="v-notes">Notas internas</Label>
             <Input id="v-notes" placeholder="Anotações opcionais" value={form.notes}
               onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Plano de Assinatura</Label>
+            <div className="flex gap-2">
+              {[
+                { code: 'trial', label: '🆓 Trial', desc: '3 usuários, teaser' },
+                { code: 'pro', label: '⭐ Professional', desc: 'Ilimitado, todos tools' },
+              ].map(p => (
+                <button key={p.code} type="button"
+                  onClick={() => setForm(f => ({ ...f, planCode: p.code }))}
+                  className={`flex-1 rounded-lg border p-3 text-left transition-all ${
+                    form.planCode === p.code
+                      ? 'border-primary bg-primary/10 ring-1 ring-primary/40'
+                      : 'border-border hover:border-primary/40 hover:bg-surface-hover'
+                  }`}
+                >
+                  <p className="font-medium text-sm">{p.label}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{p.desc}</p>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
         <DialogFooter className="gap-2">
