@@ -1,8 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
-import { fetchSubscriptionPlans } from '@/lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchSubscriptionPlans, updatePlanConfig, getAgentTools } from '@/lib/api';
 import type { SubscriptionPlan } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
-import { Crown, Cpu, Wrench, Users, Database, MessageSquare, FileText, Loader2 } from 'lucide-react';
+import { Crown, Cpu, Wrench, Users, Database, MessageSquare, FileText, Loader2, Save, Check, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 
 const TOOL_LABELS: Record<string, string> = {
   get_subscribed_skus: 'Licenças contratadas',
@@ -23,12 +25,84 @@ const TOOL_LABELS: Record<string, string> = {
   get_user_storage_detail: 'Storage por usuário',
 };
 
+const TOOL_CATEGORIES: Record<string, string[]> = {
+  'Licenças & SKUs': [
+    'get_subscribed_skus', 'get_user_assigned_skus', 'get_assigned_licenses',
+    'get_license_prices', 'get_sku_catalog',
+  ],
+  'Oportunidades': [
+    'get_opportunities_summary', 'get_opportunities_list', 'get_opportunities_teaser',
+    'update_opportunity_status',
+  ],
+  'Usuários & Uso': [
+    'get_users', 'get_office_desktop_usage', 'get_services_user_counts',
+    'get_storage_usage_list', 'get_user_storage_detail',
+  ],
+  'Governança': [
+    'get_audit_trail', 'send_email_report',
+  ],
+};
+
 export default function PlansPage() {
+  const queryClient = useQueryClient();
   const { data: plans = [], isLoading } = useQuery<SubscriptionPlan[]>({
     queryKey: ['subscription-plans'],
     queryFn: fetchSubscriptionPlans,
     staleTime: 60_000,
   });
+
+  // Fetch all available tools from backend
+  const { data: toolsData } = useQuery({
+    queryKey: ['agent-tools'],
+    queryFn: getAgentTools,
+    staleTime: 120_000,
+  });
+
+  const allToolNames: string[] = (toolsData?.tools ?? []).map(
+    (t: { function: { name: string } }) => t.function.name
+  );
+
+  // Track which plan is being edited
+  const [editingPlan, setEditingPlan] = useState<string | null>(null);
+  const [editingTools, setEditingTools] = useState<string[]>([]);
+
+  const saveMutation = useMutation({
+    mutationFn: ({ planCode, tools }: { planCode: string; tools: string[] }) =>
+      updatePlanConfig(planCode, { allowedTools: tools }),
+    onSuccess: (_data, vars) => {
+      toast.success(`Tools do plano "${vars.planCode}" atualizadas com sucesso.`);
+      queryClient.invalidateQueries({ queryKey: ['subscription-plans'] });
+      setEditingPlan(null);
+    },
+    onError: (err: Error) => {
+      toast.error(`Erro ao salvar: ${err.message}`);
+    },
+  });
+
+  function startEditing(plan: SubscriptionPlan) {
+    setEditingPlan(plan.PlanCode);
+    setEditingTools([...(plan.AllowedTools ?? [])]);
+  }
+
+  function cancelEditing() {
+    setEditingPlan(null);
+    setEditingTools([]);
+  }
+
+  function toggleTool(toolName: string) {
+    setEditingTools(prev =>
+      prev.includes(toolName) ? prev.filter(t => t !== toolName) : [...prev, toolName]
+    );
+  }
+
+  function toggleCategory(categoryTools: string[]) {
+    const allSelected = categoryTools.every(t => editingTools.includes(t));
+    if (allSelected) {
+      setEditingTools(prev => prev.filter(t => !categoryTools.includes(t)));
+    } else {
+      setEditingTools(prev => [...new Set([...prev, ...categoryTools])]);
+    }
+  }
 
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
@@ -39,7 +113,7 @@ export default function PlansPage() {
         </div>
         <div>
           <h1 className="text-xl font-bold text-foreground">Catálogo de Planos</h1>
-          <p className="text-sm text-muted-foreground">Planos de assinatura disponíveis e suas configurações</p>
+          <p className="text-sm text-muted-foreground">Planos de assinatura e configuração de tools por plano</p>
         </div>
       </div>
 
@@ -50,7 +124,19 @@ export default function PlansPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {plans.map((plan) => (
-            <PlanCard key={plan.PlanCode} plan={plan} />
+            <PlanCard
+              key={plan.PlanCode}
+              plan={plan}
+              isEditing={editingPlan === plan.PlanCode}
+              editingTools={editingTools}
+              allToolNames={allToolNames}
+              isSaving={saveMutation.isPending}
+              onStartEdit={() => startEditing(plan)}
+              onCancelEdit={cancelEditing}
+              onSave={() => saveMutation.mutate({ planCode: plan.PlanCode, tools: editingTools })}
+              onToggleTool={toggleTool}
+              onToggleCategory={toggleCategory}
+            />
           ))}
         </div>
       )}
@@ -58,8 +144,30 @@ export default function PlansPage() {
   );
 }
 
-function PlanCard({ plan }: { plan: SubscriptionPlan }) {
+interface PlanCardProps {
+  plan: SubscriptionPlan;
+  isEditing: boolean;
+  editingTools: string[];
+  allToolNames: string[];
+  isSaving: boolean;
+  onStartEdit: () => void;
+  onCancelEdit: () => void;
+  onSave: () => void;
+  onToggleTool: (toolName: string) => void;
+  onToggleCategory: (tools: string[]) => void;
+}
+
+function PlanCard({
+  plan, isEditing, editingTools, allToolNames, isSaving,
+  onStartEdit, onCancelEdit, onSave, onToggleTool, onToggleCategory,
+}: PlanCardProps) {
   const isPro = plan.PlanCode === 'pro';
+  const tools = isEditing ? editingTools : (plan.AllowedTools ?? []);
+
+  // Use allToolNames if available (dynamic), otherwise fall back to static TOOL_CATEGORIES
+  const allKnownTools = allToolNames.length > 0
+    ? allToolNames
+    : Object.values(TOOL_CATEGORIES).flat();
 
   return (
     <div className={`glass rounded-xl border overflow-hidden ${
@@ -117,17 +225,151 @@ function PlanCard({ plan }: { plan: SubscriptionPlan }) {
       <div className="px-6 py-4 border-t border-border/50">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Tools ({plan.AllowedTools?.length ?? 0})
+            Tools ({tools.length})
           </h3>
-          <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
+          <div className="flex items-center gap-2">
+            {isEditing ? (
+              <>
+                <button
+                  onClick={onCancelEdit}
+                  disabled={isSaving}
+                  className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-md
+                             bg-zinc-700/50 text-zinc-300 hover:bg-zinc-700 transition-colors"
+                >
+                  <X className="h-3 w-3" /> Cancelar
+                </button>
+                <button
+                  onClick={onSave}
+                  disabled={isSaving}
+                  className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-md
+                             bg-emerald-600/80 text-white hover:bg-emerald-600 transition-colors
+                             disabled:opacity-50"
+                >
+                  {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                  Salvar
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={onStartEdit}
+                className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-md
+                           bg-violet-600/30 text-violet-300 hover:bg-violet-600/50 transition-colors
+                           border border-violet-500/20"
+              >
+                <Wrench className="h-3 w-3" /> Editar
+              </button>
+            )}
+          </div>
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          {(plan.AllowedTools ?? []).map(tool => (
-            <Badge key={tool} variant="outline" className="text-xs font-mono bg-surface border-border">
-              {TOOL_LABELS[tool] ?? tool}
-            </Badge>
-          ))}
-        </div>
+
+        {isEditing ? (
+          /* ─── Edit Mode: grouped checkboxes ─── */
+          <div className="space-y-4">
+            {Object.entries(TOOL_CATEGORIES).map(([category, categoryTools]) => {
+              const catCount = categoryTools.filter(t => editingTools.includes(t)).length;
+              const allSelected = catCount === categoryTools.length;
+              const someSelected = catCount > 0 && !allSelected;
+              return (
+                <div key={category}>
+                  <button
+                    onClick={() => onToggleCategory(categoryTools)}
+                    className="flex items-center gap-2 mb-1.5 group cursor-pointer w-full text-left"
+                  >
+                    <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
+                      allSelected
+                        ? 'bg-violet-500 border-violet-500'
+                        : someSelected
+                          ? 'bg-violet-500/40 border-violet-500/60'
+                          : 'border-zinc-600 group-hover:border-zinc-500'
+                    }`}>
+                      {(allSelected || someSelected) && <Check className="h-2.5 w-2.5 text-white" />}
+                    </div>
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      {category} ({catCount}/{categoryTools.length})
+                    </span>
+                  </button>
+                  <div className="grid grid-cols-1 gap-1 pl-5">
+                    {categoryTools.map(toolName => {
+                      const isChecked = editingTools.includes(toolName);
+                      return (
+                        <label
+                          key={toolName}
+                          className="flex items-center gap-2 py-1 px-2 rounded-md cursor-pointer
+                                     hover:bg-zinc-800/50 transition-colors group"
+                        >
+                          <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
+                            isChecked
+                              ? 'bg-emerald-500 border-emerald-500'
+                              : 'border-zinc-600 group-hover:border-zinc-500'
+                          }`}>
+                            {isChecked && <Check className="h-2.5 w-2.5 text-white" />}
+                          </div>
+                          <span className={`text-sm transition-colors ${
+                            isChecked ? 'text-foreground' : 'text-muted-foreground'
+                          }`}>
+                            {TOOL_LABELS[toolName] ?? toolName}
+                          </span>
+                          <span className="text-[10px] text-zinc-600 font-mono ml-auto">
+                            {toolName}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+            {/* Uncategorized tools */}
+            {allKnownTools
+              .filter(t => !Object.values(TOOL_CATEGORIES).flat().includes(t))
+              .length > 0 && (
+              <div>
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">
+                  Outras
+                </span>
+                <div className="grid grid-cols-1 gap-1 pl-5">
+                  {allKnownTools
+                    .filter(t => !Object.values(TOOL_CATEGORIES).flat().includes(t))
+                    .map(toolName => {
+                      const isChecked = editingTools.includes(toolName);
+                      return (
+                        <label
+                          key={toolName}
+                          className="flex items-center gap-2 py-1 px-2 rounded-md cursor-pointer
+                                     hover:bg-zinc-800/50 transition-colors group"
+                        >
+                          <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
+                            isChecked
+                              ? 'bg-emerald-500 border-emerald-500'
+                              : 'border-zinc-600 group-hover:border-zinc-500'
+                          }`}>
+                            {isChecked && <Check className="h-2.5 w-2.5 text-white" />}
+                          </div>
+                          <span className={`text-sm transition-colors ${
+                            isChecked ? 'text-foreground' : 'text-muted-foreground'
+                          }`}>
+                            {TOOL_LABELS[toolName] ?? toolName}
+                          </span>
+                        </label>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* ─── View Mode: badges ─── */
+          <div className="flex flex-wrap gap-1.5">
+            {tools.map(tool => (
+              <Badge key={tool} variant="outline" className="text-xs font-mono bg-surface border-border">
+                {TOOL_LABELS[tool] ?? tool}
+              </Badge>
+            ))}
+            {tools.length === 0 && (
+              <span className="text-xs text-muted-foreground italic">Nenhuma tool configurada</span>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

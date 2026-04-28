@@ -568,6 +568,9 @@ export const fetchSubscriptionPlans = async (): Promise<SubscriptionPlan[]> => {
   return (r?.plans ?? []) as SubscriptionPlan[];
 };
 
+export const updatePlanConfig = (planCode: string, updates: Record<string, unknown>) =>
+  cpPost('UpdatePlanConfig', { planCode, ...updates });
+
 export const fetchTenantSubscription = async (tenantId: string): Promise<TenantSubscription | null> => {
   const r = await cpGet('GetTenantSubscription', { tenantId });
   return (r?.subscription ?? null) as TenantSubscription | null;
