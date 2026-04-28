@@ -1,9 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchSubscriptionPlans, updatePlanConfig, getAgentTools } from '@/lib/api';
+import { fetchSubscriptionPlans, updatePlanConfig, getAgentTools, getAgentConfig } from '@/lib/api';
 import type { SubscriptionPlan } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
-import { Crown, Cpu, Wrench, Users, Database, MessageSquare, FileText, Loader2, Save, Check, X } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Crown, Cpu, Wrench, Users, Database, MessageSquare, FileText, Loader2, Save, Check, X, Pencil, ChevronDown } from 'lucide-react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 
 const TOOL_LABELS: Record<string, string> = {
@@ -57,6 +57,15 @@ export default function PlansPage() {
     queryFn: getAgentTools,
     staleTime: 120_000,
   });
+
+  // Fetch allowed models
+  const { data: configData } = useQuery({
+    queryKey: ['agent-config'],
+    queryFn: getAgentConfig,
+    staleTime: 120_000,
+  });
+
+  const allowedModels: string[] = configData?.allowedModels ?? [];
 
   const allToolNames: string[] = (toolsData?.tools ?? []).map(
     (t: { function: { name: string } }) => t.function.name
@@ -130,12 +139,15 @@ export default function PlansPage() {
               isEditing={editingPlan === plan.PlanCode}
               editingTools={editingTools}
               allToolNames={allToolNames}
+              allowedModels={allowedModels}
               isSaving={saveMutation.isPending}
               onStartEdit={() => startEditing(plan)}
               onCancelEdit={cancelEditing}
               onSave={() => saveMutation.mutate({ planCode: plan.PlanCode, tools: editingTools })}
               onToggleTool={toggleTool}
               onToggleCategory={toggleCategory}
+              onSaveModel={(model) => saveMutation.mutate({ planCode: plan.PlanCode, tools: plan.AllowedTools ?? [] } as any)}
+              queryClient={queryClient}
             />
           ))}
         </div>
@@ -149,17 +161,21 @@ interface PlanCardProps {
   isEditing: boolean;
   editingTools: string[];
   allToolNames: string[];
+  allowedModels: string[];
   isSaving: boolean;
   onStartEdit: () => void;
   onCancelEdit: () => void;
   onSave: () => void;
   onToggleTool: (toolName: string) => void;
   onToggleCategory: (tools: string[]) => void;
+  onSaveModel: (model: string) => void;
+  queryClient: ReturnType<typeof useQueryClient>;
 }
 
 function PlanCard({
-  plan, isEditing, editingTools, allToolNames, isSaving,
+  plan, isEditing, editingTools, allToolNames, allowedModels, isSaving,
   onStartEdit, onCancelEdit, onSave, onToggleTool, onToggleCategory,
+  onSaveModel, queryClient,
 }: PlanCardProps) {
   const isPro = plan.PlanCode === 'pro';
   const tools = isEditing ? editingTools : (plan.AllowedTools ?? []);
@@ -204,22 +220,11 @@ function PlanCard({
       </div>
 
       {/* Model */}
-      <div className="px-6 py-4 border-t border-border/50">
-        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Modelo IA</h3>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Cpu className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-mono text-foreground">{plan.DefaultChatModel}</span>
-          </div>
-          <div className="flex gap-2">
-            {plan.AllowCustomPrompt && (
-              <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
-                Prompt Custom
-              </Badge>
-            )}
-          </div>
-        </div>
-      </div>
+      <ModelSection
+        plan={plan}
+        allowedModels={allowedModels}
+        queryClient={queryClient}
+      />
 
       {/* Tools */}
       <div className="px-6 py-4 border-t border-border/50">
@@ -370,6 +375,99 @@ function PlanCard({
             )}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+function ModelSection({ plan, allowedModels, queryClient }: {
+  plan: SubscriptionPlan;
+  allowedModels: string[];
+  queryClient: ReturnType<typeof useQueryClient>;
+}) {
+  const [isEditingModel, setIsEditingModel] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(plan.DefaultChatModel);
+
+  const modelMutation = useMutation({
+    mutationFn: (model: string) =>
+      updatePlanConfig(plan.PlanCode, { defaultChatModel: model }),
+    onSuccess: () => {
+      toast.success(`Modelo do plano "${plan.PlanCode}" alterado para ${selectedModel}.`);
+      queryClient.invalidateQueries({ queryKey: ['subscription-plans'] });
+      setIsEditingModel(false);
+    },
+    onError: (err: Error) => toast.error(`Erro: ${err.message}`),
+  });
+
+  return (
+    <div className="px-6 py-4 border-t border-border/50">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Modelo IA</h3>
+        {isEditingModel ? (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { setIsEditingModel(false); setSelectedModel(plan.DefaultChatModel); }}
+              disabled={modelMutation.isPending}
+              className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-md
+                         bg-zinc-700/50 text-zinc-300 hover:bg-zinc-700 transition-colors"
+            >
+              <X className="h-3 w-3" /> Cancelar
+            </button>
+            <button
+              onClick={() => modelMutation.mutate(selectedModel)}
+              disabled={modelMutation.isPending || selectedModel === plan.DefaultChatModel}
+              className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-md
+                         bg-emerald-600/80 text-white hover:bg-emerald-600 transition-colors
+                         disabled:opacity-50"
+            >
+              {modelMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+              Salvar
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setIsEditingModel(true)}
+            className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-md
+                       bg-violet-600/30 text-violet-300 hover:bg-violet-600/50 transition-colors
+                       border border-violet-500/20"
+          >
+            <Pencil className="h-3 w-3" /> Editar
+          </button>
+        )}
+      </div>
+      <div className="flex items-center gap-4">
+        {isEditingModel ? (
+          <div className="relative flex-1">
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="w-full appearance-none bg-zinc-800/80 border border-zinc-700 rounded-lg
+                         px-3 py-2 text-sm font-mono text-foreground
+                         focus:outline-none focus:ring-2 focus:ring-violet-500/40 focus:border-violet-500/60
+                         cursor-pointer pr-8"
+            >
+              {allowedModels.length > 0 ? (
+                allowedModels.map(m => (
+                  <option key={m} value={m}>{m}</option>
+                ))
+              ) : (
+                <option value={plan.DefaultChatModel}>{plan.DefaultChatModel}</option>
+              )}
+            </select>
+            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Cpu className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-mono text-foreground">{plan.DefaultChatModel}</span>
+          </div>
+        )}
+        <div className="flex gap-2">
+          {plan.AllowCustomPrompt && (
+            <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+              Prompt Custom
+            </Badge>
+          )}
+        </div>
       </div>
     </div>
   );
