@@ -2,9 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchSubscriptionPlans, updatePlanConfig, getAgentTools, getAgentConfig } from '@/lib/api';
 import type { SubscriptionPlan } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
-import { Crown, Cpu, Wrench, Users, Database, MessageSquare, FileText, Loader2, Save, Check, X, Pencil, ChevronDown } from 'lucide-react';
+import { Crown, Cpu, Wrench, Users, Database, MessageSquare, FileText, Loader2, Save, Check, X, Pencil, ChevronDown, Type } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { RichTextEditor, stripHtml } from '@/components/RichTextEditor';
 
 const TOOL_LABELS: Record<string, string> = {
   get_subscribed_skus: 'Licenças contratadas',
@@ -227,6 +228,9 @@ function PlanCard({
         queryClient={queryClient}
       />
 
+      {/* Prompt do Plano */}
+      <PromptSection plan={plan} queryClient={queryClient} />
+
       {/* Tools */}
       <div className="px-6 py-4 border-t border-border/50">
         <div className="flex items-center justify-between mb-3">
@@ -380,6 +384,116 @@ function PlanCard({
     </div>
   );
 }
+
+// ─── PromptSection ────────────────────────────────────────────────────────────
+function PromptSection({ plan, queryClient }: {
+  plan: SubscriptionPlan;
+  queryClient: ReturnType<typeof useQueryClient>;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [promptHtml, setPromptHtml] = useState(plan.PlanPromptHtml ?? '');
+  const [expanded, setExpanded] = useState(false);
+
+  const saveMutation = useMutation({
+    mutationFn: (html: string) =>
+      updatePlanConfig(plan.PlanCode, { promptHtml: html }),
+    onSuccess: () => {
+      toast.success(`Prompt do plano "${plan.PlanCode}" atualizado com sucesso.`);
+      queryClient.invalidateQueries({ queryKey: ['subscription-plans'] });
+      setIsEditing(false);
+    },
+    onError: (err: Error) => toast.error(`Erro ao salvar prompt: ${err.message}`),
+  });
+
+  const hasPrompt = !!(plan.PlanPromptHtml && stripHtml(plan.PlanPromptHtml).length > 0);
+  const plainTextLen = stripHtml(promptHtml).length;
+
+  return (
+    <div className="px-6 py-4 border-t border-border/50">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+          <Type className="h-3.5 w-3.5" />
+          Prompt do Plano
+        </h3>
+        <div className="flex items-center gap-2">
+          {isEditing ? (
+            <>
+              <button
+                onClick={() => { setIsEditing(false); setPromptHtml(plan.PlanPromptHtml ?? ''); }}
+                disabled={saveMutation.isPending}
+                className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-md
+                           bg-zinc-700/50 text-zinc-300 hover:bg-zinc-700 transition-colors"
+              >
+                <X className="h-3 w-3" /> Cancelar
+              </button>
+              <button
+                onClick={() => saveMutation.mutate(promptHtml)}
+                disabled={saveMutation.isPending || plainTextLen === 0}
+                className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-md
+                           bg-emerald-600/80 text-white hover:bg-emerald-600 transition-colors
+                           disabled:opacity-50"
+              >
+                {saveMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                Salvar
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => { setPromptHtml(plan.PlanPromptHtml ?? ''); setIsEditing(true); }}
+              className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-md
+                         bg-violet-600/30 text-violet-300 hover:bg-violet-600/50 transition-colors
+                         border border-violet-500/20"
+            >
+              <Pencil className="h-3 w-3" /> Editar
+            </button>
+          )}
+        </div>
+      </div>
+
+      {isEditing ? (
+        <div className="space-y-2">
+          <RichTextEditor
+            value={promptHtml}
+            onChange={setPromptHtml}
+            placeholder="Defina aqui o prompt específico para este plano. Ele é injetado no system prompt quando um tenant com este plano usa o chat."
+            minHeight="200px"
+          />
+          <p className="text-xs text-muted-foreground">
+            {plainTextLen} chars (plain text) · Injetado como sufixo do system prompt · Afeta todos os tenants com plano {plan.DisplayName}
+          </p>
+        </div>
+      ) : hasPrompt ? (
+        <div className="space-y-2">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full text-left"
+          >
+            <ChevronDown className={`h-3 w-3 transition-transform ${expanded ? 'rotate-0' : '-rotate-90'}`} />
+            {expanded ? 'Ocultar preview' : 'Mostrar preview'}
+            <span className="ml-auto text-[10px] font-mono text-zinc-600">
+              {stripHtml(plan.PlanPromptHtml!).length} chars
+            </span>
+          </button>
+          {expanded && (
+            <div className="rounded-lg border border-border overflow-hidden">
+              <RichTextEditor
+                value={plan.PlanPromptHtml!}
+                onChange={() => {}}
+                readOnly
+                minHeight="120px"
+              />
+            </div>
+          )}
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground italic">
+          Nenhum prompt configurado — o agente usa apenas o prompt global + prompt do tenant
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ModelSection({ plan, allowedModels, queryClient }: {
   plan: SubscriptionPlan;
   allowedModels: string[];
