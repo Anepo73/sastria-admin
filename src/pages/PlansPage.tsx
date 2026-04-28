@@ -23,12 +23,13 @@ const TOOL_LABELS: Record<string, string> = {
   get_services_user_counts: 'Contagem por serviço',
   get_storage_usage_list: 'Uso de armazenamento',
   get_user_storage_detail: 'Storage por usuário',
+  lookup_license_name: 'Pesquisa de licenças',
 };
 
 const TOOL_CATEGORIES: Record<string, string[]> = {
   'Licenças & SKUs': [
     'get_subscribed_skus', 'get_user_assigned_skus', 'get_assigned_licenses',
-    'get_license_prices', 'get_sku_catalog',
+    'get_license_prices', 'get_sku_catalog', 'lookup_license_name',
   ],
   'Oportunidades': [
     'get_opportunities_summary', 'get_opportunities_list', 'get_opportunities_teaser',
