@@ -19,6 +19,8 @@ const TOOL_LABELS: Record<string, string> = {
   get_audit_trail: 'Audit trail',
   send_email_report: 'Envio de e-mail',
   get_services_user_counts: 'Contagem por serviço',
+  get_storage_usage_list: 'Uso de armazenamento',
+  get_user_storage_detail: 'Storage por usuário',
 };
 
 export default function PlansPage() {
