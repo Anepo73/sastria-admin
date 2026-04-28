@@ -59,6 +59,7 @@ const INGEST_ENDPOINTS: { name: string; path: string; timeout_ms: number }[] = [
   { name: 'usersassignedplans', path: '/api/ingest/usersassignedplans', timeout_ms: 300000 },
   { name: 'usersigninactivity', path: '/api/ingest/usersigninactivity', timeout_ms: 300000 },
   { name: 'intel/userObservedCapabilities', path: '/api/ingest/intel/userObservedCapabilities', timeout_ms: 120000 },
+  { name: 'graph/driveItems (File Editors)', path: '/api/ingest/graph/driveItems', timeout_ms: 600000 },
   { name: 'reports/o365ServicesUserCounts', path: '/api/ingest/reports/o365ServicesUserCounts', timeout_ms: 60000 },
 ];
 
