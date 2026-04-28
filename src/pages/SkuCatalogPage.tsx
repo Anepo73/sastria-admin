@@ -96,6 +96,9 @@ export default function SkuCatalogPage() {
                     <Badge className={s.is_active ? 'bg-success/20 text-success border-success/30' : 'bg-muted text-muted-foreground'}>
                       {s.is_active ? 'Ativo' : 'Inativo'}
                     </Badge>
+                    {(s as any).is_business && (
+                      <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 ml-1">Business</Badge>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="sm" onClick={() => setModal(s)}><Pencil className="h-3.5 w-3.5" /></Button>
@@ -130,7 +133,7 @@ function SkuModal({ sku, defaultSkuId, defaultPartNumber, onClose, onSaved }: {
 
   const emptyForm = {
     sku_id: '', part_number: '', display_name: '', product_family: '', source: '',
-    is_deprecated: false, is_free_trial: false, is_active: true,
+    is_deprecated: false, is_free_trial: false, is_business: false, is_active: true,
     Price_ERP: '', Price_EAS: '', Price_NCE: '',
     supports_desktop_apps: false, supports_web_apps: false,
     supports_exchange: false, supports_exchange_archive: false,
@@ -156,6 +159,7 @@ function SkuModal({ sku, defaultSkuId, defaultPartNumber, onClose, onSaved }: {
         source: s.source || '',
         is_deprecated: !!s.is_deprecated,
         is_free_trial: !!s.is_free_trial,
+        is_business: !!s.is_business,
         is_active: s.is_active !== false,
         Price_ERP: s.Price_ERP != null ? String(s.Price_ERP) : '',
         Price_EAS: s.Price_EAS != null ? String(s.Price_EAS) : '',
@@ -192,6 +196,7 @@ function SkuModal({ sku, defaultSkuId, defaultPartNumber, onClose, onSaved }: {
         source: form.source || null,
         is_deprecated: form.is_deprecated,
         is_free_trial: form.is_free_trial,
+        is_business: form.is_business,
         Price_ERP: parseNum(form.Price_ERP) ?? null,
         Price_EAS: parseNum(form.Price_EAS) ?? null,
         Price_NCE: parseNum(form.Price_NCE) ?? null,
@@ -259,6 +264,7 @@ function SkuModal({ sku, defaultSkuId, defaultPartNumber, onClose, onSaved }: {
             <div className="flex flex-wrap gap-x-6 gap-y-2">
               <Toggle label="Descontinuado (Deprecated)" field="is_deprecated" />
               <Toggle label="Free Trial" field="is_free_trial" />
+              <Toggle label="Business (limite 300 users)" field="is_business" />
             </div>
           </fieldset>
 

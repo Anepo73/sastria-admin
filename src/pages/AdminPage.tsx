@@ -267,15 +267,15 @@ function ActionBtn({ title, onClick, children, className = '' }: { title: string
 
 export function EditTenantModal({ tenant, onClose, onSaved }: { tenant: Tenant | 'new' | null; onClose: () => void; onSaved: () => void }) {
   const isNew = tenant === 'new';
-  const [form, setForm] = useState({ tenant_code: '', is_enabled: true, sync_enable: false, graph_client_id: '', graph_secret: '' });
+  const [form, setForm] = useState({ tenant_code: '', is_enabled: true, sync_enable: false, allows_business: true, graph_client_id: '', graph_secret: '' });
   const [loading, setLoading] = useState(false);
   const [provisioning, setProvisioning] = useState(false);
 
   useEffect(() => {
     if (tenant && tenant !== 'new') {
-      setForm({ tenant_code: tenant.tenant_code, is_enabled: tenant.is_enabled, sync_enable: tenant.sync_enabled, graph_client_id: tenant.graph_client_id || '', graph_secret: '' });
+      setForm({ tenant_code: tenant.tenant_code, is_enabled: tenant.is_enabled, sync_enable: tenant.sync_enabled, allows_business: (tenant as any).allows_business !== false, graph_client_id: tenant.graph_client_id || '', graph_secret: '' });
     } else {
-      setForm({ tenant_code: '', is_enabled: true, sync_enable: false, graph_client_id: '', graph_secret: '' });
+      setForm({ tenant_code: '', is_enabled: true, sync_enable: false, allows_business: true, graph_client_id: '', graph_secret: '' });
     }
   }, [tenant]);
 
@@ -288,6 +288,7 @@ export function EditTenantModal({ tenant, onClose, onSaved }: { tenant: Tenant |
           tenant_code: form.tenant_code,
           is_enabled: form.is_enabled,
           sync_enable: form.sync_enable,
+          allows_business: form.allows_business,
           graph_client_id: form.graph_client_id || undefined,
           graph_secret: form.graph_secret || undefined,
         });
@@ -310,6 +311,7 @@ export function EditTenantModal({ tenant, onClose, onSaved }: { tenant: Tenant |
           tenant_code: form.tenant_code,
           is_enabled: form.is_enabled,
           sync_enable: form.sync_enable,
+          allows_business: form.allows_business,
           graph_client_id: form.graph_client_id || undefined,
           graph_secret: form.graph_secret || undefined,
         });
@@ -331,6 +333,7 @@ export function EditTenantModal({ tenant, onClose, onSaved }: { tenant: Tenant |
           <div className="flex gap-6">
             <label className="flex items-center gap-2 text-sm"><Checkbox checked={form.is_enabled} onCheckedChange={(v) => setForm(f => ({ ...f, is_enabled: !!v }))} />Sistema Ativo</label>
             <label className="flex items-center gap-2 text-sm"><Checkbox checked={form.sync_enable} onCheckedChange={(v) => setForm(f => ({ ...f, sync_enable: !!v }))} />Sync Ingestão</label>
+            <label className="flex items-center gap-2 text-sm"><Checkbox checked={form.allows_business} onCheckedChange={(v) => setForm(f => ({ ...f, allows_business: !!v }))} />Permite Business</label>
           </div>
           {provisioning && <p className="text-xs text-primary animate-pulse">⚙️ Provisionando motor de IA...</p>}
         </div>
