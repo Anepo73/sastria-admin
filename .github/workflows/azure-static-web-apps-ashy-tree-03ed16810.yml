@@ -27,6 +27,8 @@ jobs:
 
       - name: Build Frontend
         run: npm ci && npm run build && cp staticwebapp.config.json dist/
+        env:
+          VITE_D365_FUNCTION_KEY: ${{ secrets.VITE_D365_FUNCTION_KEY }}
 
       - name: Install API dependencies
         run: cd api && npm ci
