@@ -1,5 +1,5 @@
 import {
-  Building2, Package, Layers, FileText,
+  Building2, Package, Layers, FileText, HardDrive,
   ChevronLeft, Ticket, BarChart2, MessageSquare, ExternalLink, Bot, Wrench, Crown
 } from 'lucide-react';
 import { SastrIALogo } from '@/components/SastrIALogo';
@@ -30,6 +30,7 @@ const adminItems = [
   { title: 'Chat Logs',           url: '/chat-logs',     icon: FileText   },
   { title: 'Config do Agente',    url: '/agent-config',  icon: Bot        },
   { title: 'Tools do Agente',     url: '/agent-tools',   icon: Wrench     },
+  { title: 'D365 Storage',        url: '/d365-storage',  icon: HardDrive  },
 ];
 
 export function AdminSidebar() {

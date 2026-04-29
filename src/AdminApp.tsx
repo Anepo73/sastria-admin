@@ -20,6 +20,7 @@ import AgentConfigPage from "@/pages/AgentConfigPage";
 import AgentToolsPage from "@/pages/AgentToolsPage";
 import TenantDetailPage from "@/pages/TenantDetailPage";
 import PlansPage from "@/pages/PlansPage";
+import D365StoragePage from "@/pages/D365StoragePage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -84,6 +85,7 @@ const AdminApp = () => (
               <Route path="/agent-tools" element={<AgentToolsPage />} />
               <Route path="/config/license-costs" element={<ConfigGuard><LicenseCostsPage /></ConfigGuard>} />
               <Route path="/config/contract-docs" element={<ConfigGuard><ContractDocsPage /></ConfigGuard>} />
+              <Route path="/d365-storage" element={<D365StoragePage />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
