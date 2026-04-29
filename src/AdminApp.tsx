@@ -21,6 +21,8 @@ import AgentToolsPage from "@/pages/AgentToolsPage";
 import TenantDetailPage from "@/pages/TenantDetailPage";
 import PlansPage from "@/pages/PlansPage";
 import D365StoragePage from "@/pages/D365StoragePage";
+import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
+import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -68,6 +70,8 @@ const AdminApp = () => (
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<LoginGuard />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
 
             <Route element={<AdminGuard><AdminLayout /></AdminGuard>}>
               <Route path="/" element={<AdminPage />} />

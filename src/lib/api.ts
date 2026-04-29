@@ -153,6 +153,12 @@ async function proxyDelete(endpoint: string, params: Record<string, string> = {}
 export const authLogin = (email: string, password: string) =>
   proxyPost('AuthLogin', { email, password });
 
+export const requestPasswordReset = (email: string) =>
+  proxyPost('RequestPasswordReset', { email });
+
+export const resetPassword = (email: string, token: string, newPassword: string) =>
+  proxyPost('ResetPassword', { email, token, newPassword });
+
 // Chat
 export const sendChatMessage = (body: {
   question: string;

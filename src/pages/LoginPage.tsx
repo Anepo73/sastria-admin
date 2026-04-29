@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -72,6 +73,15 @@ export default function LoginPage() {
               />
             </div>
 
+            <div className="text-right">
+              <Link
+                to="/forgot-password"
+                className="text-xs text-muted-foreground hover:text-primary transition-colors"
+              >
+                Esqueci minha senha
+              </Link>
+            </div>
+
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Entrando...' : 'Entrar'}
             </Button>
@@ -81,3 +91,4 @@ export default function LoginPage() {
     </div>
   );
 }
+
