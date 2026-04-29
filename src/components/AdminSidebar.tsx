@@ -1,6 +1,6 @@
 import {
   Building2, Package, Layers, FileText, HardDrive,
-  ChevronLeft, Ticket, BarChart2, MessageSquare, ExternalLink, Bot, Wrench, Crown
+  ChevronLeft, Ticket, BarChart2, MessageSquare, ExternalLink, Bot, Wrench, Crown, Shield
 } from 'lucide-react';
 import { SastrIALogo } from '@/components/SastrIALogo';
 import { SastrIAAvatar } from '@/components/SastrIAAvatar';
@@ -31,6 +31,7 @@ const adminItems = [
   { title: 'Config do Agente',    url: '/agent-config',  icon: Bot        },
   { title: 'Tools do Agente',     url: '/agent-tools',   icon: Wrench     },
   { title: 'D365 Storage',        url: '/d365-storage',  icon: HardDrive  },
+  { title: 'D365 License Gov',     url: '/d365-license-governance', icon: Shield },
 ];
 
 export function AdminSidebar() {

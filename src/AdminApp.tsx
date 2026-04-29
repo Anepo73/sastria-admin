@@ -21,6 +21,7 @@ import AgentToolsPage from "@/pages/AgentToolsPage";
 import TenantDetailPage from "@/pages/TenantDetailPage";
 import PlansPage from "@/pages/PlansPage";
 import D365StoragePage from "@/pages/D365StoragePage";
+import D365LicenseGovernancePage from "@/pages/D365LicenseGovernancePage";
 import ForgotPasswordPage from "@/pages/ForgotPasswordPage";
 import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import NotFound from "@/pages/NotFound";
@@ -90,6 +91,7 @@ const AdminApp = () => (
               <Route path="/config/license-costs" element={<ConfigGuard><LicenseCostsPage /></ConfigGuard>} />
               <Route path="/config/contract-docs" element={<ConfigGuard><ContractDocsPage /></ConfigGuard>} />
               <Route path="/d365-storage" element={<D365StoragePage />} />
+              <Route path="/d365-license-governance" element={<D365LicenseGovernancePage />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />
