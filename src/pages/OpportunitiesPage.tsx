@@ -119,6 +119,9 @@ function PivotDashboard({ opps }: { opps: Opportunity[] }) {
       grandSavings += o.savings_year ?? 0;
     }
 
+    // Sort licenses by total savings descending
+    licenses.sort((a, b) => (licTotals[b]?.savings ?? 0) - (licTotals[a]?.savings ?? 0));
+
     return { severities, licenses, matrix, sevTotals, licTotals, grandCount, grandSavings };
   }, [opps]);
 
